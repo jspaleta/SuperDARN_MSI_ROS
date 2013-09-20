@@ -360,7 +360,7 @@ int SiteAzeStartIntt(int sec,int usec) {
 
   rprm.tbeam=bmnum;   
   rprm.tfreq=12000;   
-  rprm.trise=5000;   
+  rprm.trise=200;   
   rprm.baseband_samplerate=((double)nbaud/(double)txpl)*1E6; 
   rprm.filter_bandwidth=rprm.baseband_samplerate; 
   rprm.match_filter=1;

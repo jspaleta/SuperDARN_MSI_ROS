@@ -20,15 +20,15 @@
 
 extern int verbose;
 
-void load_filter_taps(FILE *ics660, uint32_t chip, uint32_t channel, int fc, double t_in)
+void load_filter_taps(FILE *ics660, uint32_t chip, uint32_t channel, int t_rise, double t_in)
 {
   struct ICS660_FILTER filter_str;
   if (verbose > 1) printf("  In Load filter taps file:%d chip:%d channel:%d trise:%d state:%lf\n"
-                          ,ics660,chip,channel,fc,t_in);	
+                          ,ics660,chip,channel,t_rise,t_in);	
 
   filter_str.chip = chip;
   filter_str.channel = channel;
-  filter_str.f_corner = fc;
+  filter_str.f_corner = 1e6 / t_rise; /* convert rise time in microseconds to corner frequency in hertz */
   filter_str.state_time = t_in;
 #ifdef __QNX__
   ics660_set_parameter((int)ics660,(int)ICS660_LOAD_FILTER,&filter_str,sizeof(filter_str));
