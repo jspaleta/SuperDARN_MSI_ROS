@@ -2,15 +2,15 @@
  ============
  Author: Kevin Sterne
 
- This code uses the 'Option 2' beam progression in which the west, meridional, and 
- east beams are skipped in the regular field of view scan.  As a bit of a trick, 
+ This code uses the 'Option 2' beam progression in which the west, meridional, and
+ east beams are skipped in the regular field of view scan.  As a bit of a trick,
  the beam progression goes for a forward radar:
 
  westbm, fovbm, meribm, eastbm, fovbm, fovbm, westbm, fovbm, meribm, eastbm, fovbm, fovbm, westbm, ...
 
- It was noticed that this kind of pattern still allows for 5 repetitions of the 
- mini-scan beams for the traditional 16 beams radars.  This code also does not 
- synchronize the start of the beam sounding to an integer time interval.  
+ It was noticed that this kind of pattern still allows for 5 repetitions of the
+ mini-scan beams for the traditional 16 beams radars.  This code also does not
+ synchronize the start of the beam sounding to an integer time interval.
 
  This code is largely based off of the themisscan.c RCP.  The credits for this go to:
  Author: J.Spaleta
@@ -77,7 +77,7 @@ int baseport=44100;
 struct TCPIPMsgHost errlog={"127.0.0.1",44100,-1};
 struct TCPIPMsgHost shell={"127.0.0.1",44101,-1};
 
-int tnum=4;      
+int tnum=4;
 struct TCPIPMsgHost task[4]={
 	{"127.0.0.1",1,-1}, /*  iqwrite */
 	{"127.0.0.1",2,-1}, /* rawacfwrite */
@@ -94,7 +94,7 @@ int main(int argc,char *argv[]) {
    * way of determining the time it takes for a given sequence.
    */
 	int ptab[8] = {0,14,22,24,27,31,42,43};
-	
+
 	int lags[LAG_SIZE][2] = {
 		{ 0, 0},		/*  0 */
 		{42,43},		/*  1 */
@@ -102,7 +102,7 @@ int main(int argc,char *argv[]) {
 		{24,27},		/*  3 */
 		{27,31},		/*  4 */
 		{22,27},		/*  5 */
-		
+
 		{24,31},		/*  7 */
 		{14,22},		/*  8 */
 		{22,31},		/*  9 */
@@ -119,15 +119,15 @@ int main(int argc,char *argv[]) {
 		{22,42},		/* 20 */
 		{22,43},		/* 21 */
 		{ 0,22},		/* 22 */
-		
+
 		{ 0,24},		/* 24 */
-		
+
 		{43,43}};		/* alternate lag-0  */
-	
+
 	char logtxt[1024];
 	char tempLog[40];
 /*	char diagtxt[1024]="";   This variable is unused?  */
-	
+
 	int exitpoll=0;
 	int scannowait=0;
 	int scnsc=120;
@@ -150,7 +150,7 @@ int main(int argc,char *argv[]) {
 	int westbm=9;						/* west beam */
 	int eastbm=11;						/* east beam */
 	int nintgs;						/* number of integration periods per scan */
-	
+
   /* standard radar defaults */
 	cp=200;			/* Semi-official cpid for rbspscan as of 26Oct2012 -KTS */
 	intsc=3;
@@ -162,9 +162,9 @@ int main(int argc,char *argv[]) {
 	nrang=100;
 	rsep=45;
 	txpl=300;             /* note: recomputed below */
-	
+
 	/* ========= PROCESS COMMAND LINE ARGUMENTS ============= */
-	
+
 	OptionAdd(&opt,"di",    'x',&discretion);
 	OptionAdd(&opt,"frang", 'i',&frang);
 	OptionAdd(&opt,"rsep",  'i',&rsep);
@@ -177,8 +177,8 @@ int main(int argc,char *argv[]) {
 	OptionAdd(&opt,"sb",    'i',&sbm);
 	OptionAdd(&opt,"eb",    'i',&ebm);
 	OptionAdd(&opt,"ep",    'i',&errlog.port);
-	OptionAdd(&opt,"sp",    'i',&shell.port); 
-	OptionAdd(&opt,"bp",    'i',&baseport); 
+	OptionAdd(&opt,"sp",    'i',&shell.port);
+	OptionAdd(&opt,"bp",    'i',&baseport);
 	OptionAdd(&opt,"stid",  't',&ststr);
 	OptionAdd(&opt,"fixfrq",'i',&fixfrq);		/* fix the transmit frequency */
 	OptionAdd(&opt,"meribm",'i',&meribm);		/* meridional beam */
@@ -187,15 +187,15 @@ int main(int argc,char *argv[]) {
 	OptionAdd(&opt,"trig",	'x',&trig);		/* trigger flag */
 	OptionAdd(&opt,"c",	'i',&cnum);		/* trigger flag */
 
-	
+
 	/* Process all of the command line options
 	IMPORTANT: need to do this here because we need stid and ststr   */
 	arg=OptionProcess(1,argc,argv,&opt,NULL);
 
 	/* number of integration periods possible in scan time */
 	/* basing this off of intsc and intus to reflect the integration
-	   used by the radar -KTS 25Sept2012 */  
-	nintgs = floor((scnsc+scnus*1e-6)/(intsc+(intus*1e-6)));	
+	   used by the radar -KTS 25Sept2012 */
+	nintgs = floor((scnsc+scnus*1e-6)/(intsc+(intus*1e-6)));
 
 	/* Makes sure there is an equal number of miniscan beams */
 	/* Taking one off for buffer at the end of the scan */
@@ -210,37 +210,29 @@ int main(int argc,char *argv[]) {
         if (roshost==NULL) roshost=getenv("ROSHOST");
         if (roshost==NULL) roshost=droshost;
 
-	
-	if ((errlog.sock=TCPIPMsgOpen(errlog.host,errlog.port))==-1) {    
+
+	if ((errlog.sock=TCPIPMsgOpen(errlog.host,errlog.port))==-1) {
 		fprintf(stderr,"Error connecting to error log.\n");
 	}
-	if ((shell.sock=TCPIPMsgOpen(shell.host,shell.port))==-1) {    
+	if ((shell.sock=TCPIPMsgOpen(shell.host,shell.port))==-1) { 
 		fprintf(stderr,"Error connecting to shell.\n");
 	}
 
 	for (n=0;n<tnum;n++) task[n].port+=baseport;
-	
+
 	/* rst/usr/codebase/superdarn/src.lib/os/ops.1.10/src/setup.c */
 	OpsStart(ststr);
-		
+
 	status=SiteBuild(ststr,NULL);
-	
+
 	if (status==-1) {
 		fprintf(stderr,"Could not identify station.\n");
 		exit(1);
 	}
-	
-	/* dump beams to log file */
-	ErrLog(errlog.sock,progname,logtxt);
-	for (i=0; i<nintgs; i++){
-		sprintf(tempLog, "%3d", fbms[i]);
-		strcat(logtxt, tempLog);	
-	}
-	ErrLog(errlog.sock,progname,logtxt);
 
 	/* IMPORTANT: sbm and ebm are reset by this function */
 	SiteStart(roshost);
-	
+
 	/* Reprocess the command line to restore desired parameters */
 	arg=OptionProcess(1,argc,argv,&opt,NULL);
 
@@ -253,9 +245,9 @@ int main(int argc,char *argv[]) {
 		i = sbm;
 		sbm = ebm;
 		ebm = i;
-	}		
+	}
 
-	/* Creating beam progression arrays fbms and bbms. ASSUMES that forward 
+	/* Creating beam progression arrays fbms and bbms. ASSUMES that forward
          * scan radars will use west beam first, and backward scan radars will
 	 * use east beam first.  -KTS 09Oct2012 */
 /*	fbms[0] = westbm;
@@ -312,25 +304,25 @@ int main(int argc,char *argv[]) {
 
 			bbms[i] = 7;
 			fbms[i] = 7;
-		}			
+		}
 	}
 
 	/* not sure if -nrang commandline option works */
-	
-	strncpy(combf,progid,80);   
-	
+
+	strncpy(combf,progid,80);
+
 	/* rst/usr/codebase/superdarn/src.lib/os/ops.1.10/src */
 	OpsSetupCommand(argc,argv);
 	OpsSetupShell();
 
 	RadarShellParse(&rstable,"sbm l ebm l dfrq l nfrq l dfrang l nfrang l"
 					" dmpinc l nmpinc l frqrng l xcnt l", &sbm,&ebm, &dfrq,&nfrq,
-					&dfrang,&nfrang, &dmpinc,&nmpinc, &frqrng,&xcnt);      
+					&dfrang,&nfrang, &dmpinc,&nmpinc, &frqrng,&xcnt);
 
 	status=SiteSetupRadar();
 
 	fprintf(stderr,"Status:%d\n",status);
-	
+
 	if (status !=0) {
 		ErrLog(errlog.sock,progname,"Error locating hardware.");
 		exit (1);
@@ -338,23 +330,22 @@ int main(int argc,char *argv[]) {
 
 	if (trig) cp = 220;
 	if (discretion) cp = -cp;
-	
+
 	txpl=(rsep*20)/3;		/* computing TX pulse length */
-	
+
 	sprintf(progname,"rbspscan");
 
-	OpsLogStart(errlog.sock,progname,argc,argv);  
+	OpsLogStart(errlog.sock,progname,argc,argv);
 	OpsSetupTask(tnum,task,errlog.sock,progname);
 
 	for (n=0;n<tnum;n++) {
 		RMsgSndReset(task[n].sock);
-		RMsgSndOpen(task[n].sock,strlen( (char *) command),command);     
+		RMsgSndOpen(task[n].sock,strlen( (char *) command),command);
 	}
-	
+
 	OpsFitACFStart();
-	
+
 	tsgid=SiteTimeSeq(ptab);	/* get the timing sequence */
-	
 
 	/* OpsFindSkip assumes that beam arrays, fbms and bbms, equal the number of
 	 * beams in the field of view.  Rbspscan's mini-scan beams make the size
@@ -378,24 +369,24 @@ int main(int argc,char *argv[]) {
 	} else {
 		bmnum= fbms[skip];
 	}
-		
+
 
 	do {
-		
+
 		if (SiteStartScan() !=0) continue;
-		
+
 		if (OpsReOpen(2,0,0) !=0) {
 			ErrLog(errlog.sock,progname,"Opening new files.");
 			for (n=0;n<tnum;n++) {
 				RMsgSndClose(task[n].sock);
-				RMsgSndOpen(task[n].sock,strlen( (char *) command),command);     
+				RMsgSndOpen(task[n].sock,strlen( (char *) command),command);
 			}
 		}
-		
+
 		scan=1;
-		
+
 		ErrLog(errlog.sock,progname,"Starting scan.");
-		
+
 		if (xcnt>0) {
 			cnt++;
 			if (cnt==xcnt) {
@@ -403,10 +394,10 @@ int main(int argc,char *argv[]) {
 				cnt=0;
 			} else xcf=0;
 		} else xcf=0;
-		
+
 		do {
 			TimeReadClock(&yr,&mo,&dy,&hr,&mt,&sc,&us);
-			
+
 			if (OpsDayNight()==1) {
 				stfrq=dfrq;
 				mpinc=dmpinc;
@@ -415,77 +406,77 @@ int main(int argc,char *argv[]) {
 				stfrq=nfrq;
 				mpinc=nmpinc;
 				frang=nfrang;
-			}        
-			
+			}
+
 			sprintf(logtxt,"Integrating beam:%d intt:%ds.%dus (%d:%d:%d:%d)",bmnum,
 					intsc,intus,hr,mt,sc,us);
 			ErrLog(errlog.sock,progname,logtxt);
-				
+
 			ErrLog(errlog.sock,progname,"Starting Integration.");
-            	
+
 			SiteStartIntt(intsc,intus);
-			
-			ErrLog(errlog.sock,progname,"Doing clear frequency search."); 
-			
+
+			ErrLog(errlog.sock,progname,"Doing clear frequency search.");
+
 			sprintf(logtxt, "FRQ: %d %d", stfrq, frqrng);
 			ErrLog(errlog.sock,progname, logtxt);
 
 			tfreq=SiteFCLR(stfrq,stfrq+frqrng);
-			if ( (fixfrq > 8000) && (fixfrq < 25000) ) tfreq= fixfrq; 
-			
+			if ( (fixfrq > 8000) && (fixfrq < 25000) ) tfreq= fixfrq;
+
 			sprintf(logtxt,"Transmitting on: %d (Noise=%g)",tfreq,noise);
 			ErrLog(errlog.sock,progname,logtxt);
-			
-			nave=SiteIntegrate(lags);   
+
+			nave=SiteIntegrate(lags);
 			if (nave<0) {
 				sprintf(logtxt,"Integration error:%d",nave);
-				ErrLog(errlog.sock,progname,logtxt); 
+				ErrLog(errlog.sock,progname,logtxt);
 				continue;
 			}
 			sprintf(logtxt,"Number of sequences: %d",nave);
 			ErrLog(errlog.sock,progname,logtxt);
-			
+
 			OpsBuildPrm(prm,ptab,lags);
 			OpsBuildIQ(iq,&badtr);
 			OpsBuildRaw(raw);
-			
+
 			FitACF(prm,raw,fblk,fit);
 
 			msg.num=0;
 			msg.tsize=0;
-			
+
 			tmpbuf=RadarParmFlatten(prm,&tmpsze);
-			RMsgSndAdd(&msg,tmpsze,tmpbuf,PRM_TYPE,0); 
-			
+			RMsgSndAdd(&msg,tmpsze,tmpbuf,PRM_TYPE,0);
+
 			tmpbuf=IQFlatten(iq,prm->nave,&tmpsze);
 			RMsgSndAdd(&msg,tmpsze,tmpbuf,IQ_TYPE,0);
-			
+
 			RMsgSndAdd(&msg,sizeof(unsigned int)*2*iq->tbadtr,
 				   	(unsigned char *) badtr,BADTR_TYPE,0);
-			
+
 			RMsgSndAdd(&msg,strlen(sharedmemory)+1,(unsigned char *) sharedmemory,
 				   	IQS_TYPE,0);
-			
+
 			tmpbuf=RawFlatten(raw,prm->nrang,prm->mplgs,&tmpsze);
-			RMsgSndAdd(&msg,tmpsze,tmpbuf,RAW_TYPE,0); 
-			
+			RMsgSndAdd(&msg,tmpsze,tmpbuf,RAW_TYPE,0);
+
 			tmpbuf=FitFlatten(fit,prm->nrang,&tmpsze);
-			RMsgSndAdd(&msg,tmpsze,tmpbuf,FIT_TYPE,0); 
-		
+			RMsgSndAdd(&msg,tmpsze,tmpbuf,FIT_TYPE,0);
+
 			RMsgSndAdd(&msg,strlen(progname)+1,(unsigned char *) progname,
-				   	NME_TYPE,0);   
-			
-			for (n=0;n<tnum;n++) RMsgSndSend(task[n].sock,&msg); 
-			
+				   	NME_TYPE,0);
+
+			for (n=0;n<tnum;n++) RMsgSndSend(task[n].sock,&msg);
+
 			for (n=0;n<msg.num;n++) {
 				if (msg.data[n].type==PRM_TYPE) free(msg.ptr[n]);
 				if (msg.data[n].type==IQ_TYPE) free(msg.ptr[n]);
 				if (msg.data[n].type==RAW_TYPE) free(msg.ptr[n]);
-				if (msg.data[n].type==FIT_TYPE) free(msg.ptr[n]); 
-			}          
-		
+				if (msg.data[n].type==FIT_TYPE) free(msg.ptr[n]);
+			}
+
 			RadarShell(shell.sock,&rstable);
-			
+
 			if (exitpoll !=0) break;
 			scan=0;
 			if (skip == (nintgs-1)) break;
@@ -495,12 +486,12 @@ int main(int argc,char *argv[]) {
 			} else {
 				bmnum = fbms[skip];
 			}
-			
+
 		} while (1);
-		
-		ErrLog(errlog.sock,progname,"Waiting for scan boundary."); 
+
+		ErrLog(errlog.sock,progname,"Waiting for scan boundary.");
 		if ((exitpoll==0) && (scannowait==0)) SiteEndScan(scnsc,scnus);
-		
+
 		/* Here skip is the counter for moving through the beam arrays, bbms and fbms.
 		   because the initial skip code has moved outside of the loop to keep from
 		   errorneously setting the beam, skip much be reset here.  -KTS 16Oct2012  */
@@ -520,6 +511,6 @@ int main(int argc,char *argv[]) {
 
 	SiteExit(0);
 
-	return 0;   
-} 
+	return 0;
+}
 
