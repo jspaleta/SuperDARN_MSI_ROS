@@ -321,6 +321,8 @@ int main(int argc,char *argv[]) {
 
 	status=SiteSetupRadar();
 
+	printf("Initial Setup Complete: Station ID: %s  %d\n",ststr,stid);
+
 	fprintf(stderr,"Status:%d\n",status);
 
 	if (status !=0) {
@@ -343,7 +345,11 @@ int main(int argc,char *argv[]) {
 		RMsgSndOpen(task[n].sock,strlen( (char *) command),command);
 	}
 
+	printf("Preparing OpsFitACFStart Station ID: %s  %d\n",ststr,stid);
+
 	OpsFitACFStart();
+
+	printf("Preparing SiteTimeSeq Station ID: %s  %d\n",ststr,stid);
 
 	tsgid=SiteTimeSeq(ptab);	/* get the timing sequence */
 
@@ -370,9 +376,11 @@ int main(int argc,char *argv[]) {
 		bmnum= fbms[skip];
 	}
 
+	printf("Entering Scan loop Station ID: %s  %d\n",ststr,stid);
 
 	do {
 
+		printf("Entering Site Start Scan Station ID: %s  %d\n",ststr,stid);
 		if (SiteStartScan() !=0) continue;
 
 		if (OpsReOpen(2,0,0) !=0) {
@@ -414,6 +422,7 @@ int main(int argc,char *argv[]) {
 
 			ErrLog(errlog.sock,progname,"Starting Integration.");
 
+			printf("Entering Site Start Intt Station ID: %s  %d\n",ststr,stid);
 			SiteStartIntt(intsc,intus);
 
 			ErrLog(errlog.sock,progname,"Doing clear frequency search.");
