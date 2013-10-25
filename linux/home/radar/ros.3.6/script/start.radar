@@ -6,12 +6,14 @@
 # critical tasks
 
 echo "Waiting for errlog to start"
-errlog -name ade.a -lp 41000 &
+errlog -name fhe -lp 44000 &
+#errlog -name ade.a -lp 41000 &
 #errlog -name ade.b -lp 42000 &
 #errlog -name ade.c -lp 43000 &
 #errlog -name ade.d -lp 44000 &
 
-errlog -name adw.a -lp 51000 &
+errlog -name fhw -lp 54000 &
+#errlog -name adw.a -lp 51000 &
 #errlog -name adw.b -lp 52000 &
 #errlog -name adw.c -lp 53000 &
 #errlog -name adw.d -lp 54000 &
@@ -19,21 +21,23 @@ sleep 1
 
 # TODO: extend shellserver to handle mult site and multi channel
 
-#shellserver -sh RadarShellA -cp 44001 -sp 45001 &
-#shellserver -sh RadarShellB -cp 54001 -sp 55001 &
-#sleep 1
+shellserver -sh RadarShellA -cp 44001 -sp 45001 &
+shellserver -sh RadarShellB -cp 54001 -sp 55001 &
+sleep 1
 
 # TODO: extend iqwrite for multichannel files
-#iqwrite -lp 44101 -ep 44000 &
-#iqwrite -lp 54101 -ep 54000 &
+iqwrite -lp 44101 -ep 44000 &
+iqwrite -lp 54101 -ep 54000 &
 
 echo "Waiting for fitacfwrite to start"
-fitacfwrite -r ade.a -lp 41103 -ep 41000 &
+fitacfwrite -r fhe -lp 44103 -ep 44000 &
+#fitacfwrite -r ade.a -lp 41103 -ep 41000 &
 #fitacfwrite -r ade.b -lp 42103 -ep 42000 &
 #fitacfwrite -r ade.c -lp 43103 -ep 43000 &
 #fitacfwrite -r ade.d -lp 44103 -ep 44000 &
 
-fitacfwrite -r adw.a -lp 51103 -ep 51000 &
+fitacfwrite -r fhw -lp 54103 -ep 54000 &
+#fitacfwrite -r adw.a -lp 51103 -ep 51000 &
 #fitacfwrite -r adw.b -lp 52103 -ep 52000 &
 #fitacfwrite -r adw.c -lp 53103 -ep 53000 &
 #fitacfwrite -r adw.d -lp 54103 -ep 54000 &
@@ -41,12 +45,14 @@ fitacfwrite -r adw.a -lp 51103 -ep 51000 &
 sleep 2
 
 echo "Waiting for rawacfwrite to start"
-rawacfwrite -r ade.a -lp 41102 -ep 41000 &
+rawacfwrite -r fhe -lp 44102 -ep 44000 &
+#rawacfwrite -r ade.a -lp 41102 -ep 41000 &
 #rawacfwrite -r ade.b -lp 42102 -ep 42000 &
 #rawacfwrite -r ade.c -lp 43102 -ep 43000 &
 #rawacfwrite -r ade.d -lp 44102 -ep 44000 &
 
-rawacfwrite -r adw.a -lp 51102 -ep 51000 &
+rawacfwrite -r fhw -lp 54102 -ep 54000 &
+#rawacfwrite -r adw.a -lp 51102 -ep 51000 &
 #rawacfwrite -r adw.b -lp 52102 -ep 52000 &
 #rawacfwrite -r adw.c -lp 53102 -ep 53000 &
 #rawacfwrite -r adw.d -lp 54102 -ep 54000 &
@@ -54,14 +60,16 @@ rawacfwrite -r adw.a -lp 51102 -ep 51000 &
 sleep 2
 
 echo "Waiting for rtserver to start"
-rtserver -rp 41104 -ep 41000 -tp 1401 &
+rtserver -rp 44104 -ep 44000 -tp 1401 &
+#rtserver -rp 41104 -ep 41000 -tp 1401 &
 #rtserver -rp 42104 -ep 42000 -tp 1402 &
 #rtserver -rp 43104 -ep 43000 -tp 1403 &
 #rtserver -rp 44104 -ep 44000 -tp 1404 &
 
 #sleep 2
 
-rtserver -rp 51104 -ep 51000 -tp 1501 &
+rtserver -rp 54104 -ep 54000 -tp 1501 &
+#rtserver -rp 51104 -ep 51000 -tp 1501 &
 #rtserver -rp 52104 -ep 52000 -tp 1502 &
 #rtserver -rp 53104 -ep 53000 -tp 1503 &
 #rtserver -rp 54104 -ep 54000 -tp 1504 &
@@ -69,5 +77,5 @@ rtserver -rp 51104 -ep 51000 -tp 1501 &
 sleep 2 
 
 echo "Starting Scheduler"
-schedule  -l /data/ros/scdlogs/ade.a.scdlog -f /data/ros/scd/ade.a.scd -f /data/ros/scd/ade.a-rbsp.scd -f /data/ros/scd/ade.a.special &
-schedule  -l /data/ros/scdlogs/adw.a.scdlog -f /data/ros/scd/adw.a.scd -f /data/ros/scd/adw.a-rbsp.scd -f /data/ros/scd/adw.a.special  &
+schedule  -l /data/ros/scdlogs/fhe.scdlog -f /data/ros/scd/fhe.scd -f /data/ros/scd/fhe-rbsp.scd  &
+schedule  -l /data/ros/scdlogs/fhw.scdlog -f /data/ros/scd/fhw.scd -f /data/ros/scd/fhw-rbsp.scd  &
