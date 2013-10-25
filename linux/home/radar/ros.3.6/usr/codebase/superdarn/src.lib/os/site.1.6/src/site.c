@@ -50,9 +50,6 @@
 #include "global.h"
 #include "site.h"
 
-int sock;
-char server[256];
-int port;
 int num_transmitters;
 
 struct timeval tock;

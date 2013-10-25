@@ -69,8 +69,10 @@
 #     interferometer array from midpoint of main array. This is given in
 #     meters in Cartesian coordinates. X is along the line of antennas with
 #     +X toward higher antenna numbers, Y is along the array normal
-#     direction with +Y in the direction of the array normal. Z is the
-#     altitude difference, +Z up.)
+#     direction with +Y in the direction of the array normal. 
+#     Positive Y indicate inteferometer array is in front of main array.
+#     Z is the altitude difference, +Z up. Positive Z values indicate that
+#     interometer array is at a higher altitude above sealevel than main array.)
 #
 # More analog receiver information
 #
@@ -93,9 +95,9 @@
 #
 #
 # **********************************************************************
-#
-#  1   2      3        4         5       6      7      8    9   10   11   12  [13(1) 13(2) 13(3)]  14   15  16 17
-#
-# UNTIL 01/Jan/3000 05:45:36.0
-  210 2999 31556736 +51.89 -176.63 4.0 +46.0 +3.24 +1.0 10.0 0.0 -1.0 +0.0 -69.85 +0.5    0.0 0 110 24
+#                                                               tdiff    phidiff    interf x,y,z                         
+# 1   2    3        4      5       6   7     8     9    10      11       12        [13(1) 13(2)  13(3)]    14  15 16  17    
+#                                                                                                                   
+# UNTIL 01/Jan/3000 05:45:36.0                                                                                      
+  210 2999 31556736 +51.89 -176.63 4.0 +46.0 +3.24 +1.0 0.0     -0.0065     1.0        +0.0  -10.00 +0.0      0.0 0  110 24     
 # EOF

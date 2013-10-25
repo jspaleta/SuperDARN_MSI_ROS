@@ -36,6 +36,10 @@
 #define USEC 1000000.0
 int AZW_exit_flag=0;
 char channame[5]="\0";
+char server[256]="127.0.0.1";
+int  port=0;
+int  sock=0;
+
 
 FILE *seqlog=NULL;
 char seqlog_name[256];
@@ -161,6 +165,13 @@ int SiteAzwStart(char *host) {
   backward=1;
   sbm=23;
   ebm=0;
+/* 
+ *  If you need to correct for inverted phase between main and inter rf signal 
+ *  invert=0  No inversion necessary 
+ *   invert=non-zero  Inversion necassary 
+*/
+  invert=1;
+  debug=0;
 /* rxchn number of channels typically 1*/
 /* rngoff argument in ACFCalculate.. is 2*rxchn and is normally set to 2 */
   rxchn=1;
@@ -521,7 +532,7 @@ int SiteAzwIntegrate(int (*lags)[2]) {
 
   int nave=0;
 
-  int atstp=0;
+  int atstp=0.;
   int thr=0,lmt=0;
   int aflg=0,abflg=0;
 
@@ -531,13 +542,15 @@ int SiteAzwIntegrate(int (*lags)[2]) {
   int temp;
   struct timespec time_now;
 
-  void * dest; /*AJ*/
+  void *dest=NULL; /*AJ*/
   int total_samples=0; /*AJ*/
   int usecs;
   short I,Q;
+  double phi_m,phi_i,phi_d;
   int32 temp32;
   /* phase code declarations */
   int n,nsamp, *code,   Iout, Qout;
+  uint32 uI32,uQ32;
   if (debug) {
     fprintf(stderr,"AZW SiteIntegrate: start\n");
   }
@@ -672,7 +685,7 @@ int SiteAzwIntegrate(int (*lags)[2]) {
 
     seqtval[nave].tv_sec=tick.tv_sec;
     seqtval[nave].tv_nsec=tick.tv_usec*1000;
-    seqatten[nave]=0;
+    seqatten[nave]=0.;
     seqnoise[nave]=0;
     seqbadtr[nave].num=0;
   
@@ -893,22 +906,42 @@ usleep(usecs);
       fprintf(f_diagnostic_ascii,"\n");
       fprintf(f_diagnostic_ascii,"Sequence: Parameters: END\n");
     }
+    fprintf(f_diagnostic_ascii,"Sequence: Invert %d\n",invert);
 
     if(dprm.status==0) {
       nsamp=(int)dprm.samples;
-      if(f_diagnostic_ascii!=NULL) {
-        fprintf(f_diagnostic_ascii,"Sequence : Raw Data : START\n");
-        fprintf(f_diagnostic_ascii,"  nsamp: %8d\n",nsamp);
+     
+      if(invert!=0) {
         for(n=0;n<nsamp;n++){
           Q=(short)((rdata.main[n] & 0xffff0000) >> 16);
           I=(short)(rdata.main[n] & 0x0000ffff);
+          Q=-Q;
+          I=-I;
+          uQ32=((uint32) Q) << 16;
+          uI32=((uint32) I) & 0xFFFF;
+          (rdata.main)[n]=uQ32|uI32;
+        }
+      }
+
+      if(f_diagnostic_ascii!=NULL) {
+        fprintf(f_diagnostic_ascii,"Sequence : Raw Data : START\n");
+        fprintf(f_diagnostic_ascii,"  nsamp: %8d\n",nsamp);
+        fprintf(f_diagnostic_ascii,"index I_m Q_m I_m^2+Q_m^2 phi_m I_i Q_i I_i^2+Q_i^2 phi_i phi_d\n");
+        for(n=0;n<nsamp;n++){
+          Q=(short)((rdata.main[n] & 0xffff0000) >> 16);
+          I=(short)(rdata.main[n] & 0x0000ffff);
+          phi_m=atan2(Q,I);
           if(f_diagnostic_ascii!=NULL) {
-            fprintf(f_diagnostic_ascii,"%8d %8d %8d %8d ", n, I, Q, (int)sqrt(I*I+Q*Q));
+            fprintf(f_diagnostic_ascii,"%8d %8d %8d %8d %8.3lf ", n, I, Q, (int)(I*I+Q*Q), phi_m);
            }
           Q=(short)((rdata.back[n] & 0xffff0000) >> 16);
           I=(short)(rdata.back[n] & 0x0000ffff);
+          phi_i=atan2(Q,I);
+          phi_d=phi_i-phi_m;
+          if(phi_d >=  M_PI ) phi_d=phi_d-(2.*M_PI);
+          if(phi_d < -M_PI ) phi_d=phi_d+(2.*M_PI);
           if(f_diagnostic_ascii!=NULL) {
-            fprintf(f_diagnostic_ascii,"%8d %8d %8d\n", I, Q, (int)sqrt(I*I+Q*Q));
+            fprintf(f_diagnostic_ascii,"%8d %8d %8d %8.3lf %8.3lf\n", I, Q, (int)(I*I+Q*Q),phi_i,phi_d);
           }
         }
         fprintf(f_diagnostic_ascii,"Sequence: Raw Data: END\n");
@@ -924,8 +957,6 @@ usleep(usecs);
         nsamp=(int)dprm.samples;
         code=pcode;
         for(n=0;n<(nsamp-nbaud);n++){
-          Q=((rdata.main)[n+i] & 0xffff0000) >> 16;
-          I=(rdata.main)[n+i] & 0x0000ffff;
           Iout=0;
           Qout=0;
           for(i=0;i<nbaud;i++){
@@ -943,8 +974,11 @@ usleep(usecs);
           if(f_diagnostic_ascii!=NULL) {
             fprintf(f_diagnostic_ascii,"%8d %8d %8d %8d ", n, I, Q, (int)sqrt(I*I+Q*Q));
           }
+          uQ32=((uint32) Q) << 16;
+          uI32=((uint32) I) & 0xFFFF;
+          (rdata.main)[n]=uQ32|uI32;
                 
-          (rdata.main)[n]=(Q<<16)|I;
+
           Iout=0;
           Qout=0;
           for(i=0;i<nbaud;i++){
@@ -960,8 +994,9 @@ usleep(usecs);
           if(f_diagnostic_ascii!=NULL) {
             fprintf(f_diagnostic_ascii,"%8d %8d %8d\n", I, Q, (int)sqrt(I*I+Q*Q));
           }
-
-          (rdata.back)[n]=(Q<<16)|I;
+          uQ32=((uint32) Q) << 16;
+          uI32=((uint32) I) & 0xFFFF;
+          (rdata.back)[n]=uQ32|uI32;
         }
         if(f_diagnostic_ascii!=NULL) fprintf(f_diagnostic_ascii,"PCODE: DECODE_END\n");
 
@@ -1012,22 +1047,23 @@ usleep(usecs);
       if (debug) {
         fprintf(stderr,"AZW seq %d :: ioff: %8d\n",nave,iqoff);
         fprintf(stderr,"AZW seq %d :: rdata.main 16bit :\n",nave);
-        fprintf(stderr," [  n  ] :: [  I  ] [  Q  ]\n");
+        fprintf(stderr," [  n  ] :: [  Im  ] [  Qm  ] :: [ Ii ] [ Qi ]\n");
         nsamp=(int)dprm.samples;
         for(n=0;n<(nsamp);n++){
           Q=((rdata.main)[n] & 0xffff0000) >> 16;
           I=(rdata.main)[n] & 0x0000ffff;
-          fprintf(stderr," %7d :: %7d %7d\n",n,(int)I,(int)Q);
+          fprintf(stderr," %7d :: %7d %7d ",n,(int)I,(int)Q);
+          Q=((rdata.back)[n] & 0xffff0000) >> 16;
+          I=(rdata.back)[n] & 0x0000ffff;
+          fprintf(stderr,":: %7d %7d\n",(int)I,(int)Q);
         }
         dest = (void *)(samples);
         dest += iqoff;
-        fprintf(stderr,"AZW seq %d :: rdata.back 16bit 8-11: %8d %8d %8d %8d\n",nave,
-           ((int16 *)rdata.back)[8],((int16 *)rdata.back)[9],
-           ((int16 *)rdata.back)[10],((int16 *)rdata.back)[11]);
-        dest += dprm.samples*4;
-        fprintf(stderr,"AZW seq %d :: samples    16bit 8-11: %8d %8d %8d %8d\n",nave,
-           ((int16 *)dest)[8],((int16 *)dest)[9],
-           ((int16 *)dest)[10],((int16 *)dest)[11]);
+        fprintf(stderr,"AZW seq %d :: rdata.back 16bit 30: %8d %8d\n",nave,
+           ((int16 *)rdata.back)[60],((int16 *)rdata.back)[61]);
+        dest += dprm.samples*sizeof(uint32);
+        fprintf(stderr,"AZW seq %d :: samples    16bit 30: %8d %8d\n",nave,
+           ((int16 *)dest)[60],((int16 *)dest)[61]);
         fprintf(stderr,"AZW seq %d :: iqsze: %8d\n",nave,iqsze);
       }
 
@@ -1041,7 +1077,7 @@ usleep(usecs);
         if (debug) 
         fprintf(stderr,"AZW seq %d :: ACFSumPower\n",nave);
         aflg=ACFSumPower(&tsgprm,mplgs,lagtable,pwr0,
-		     (int16 *) rdata.main,rngoff,skpnum!=0,
+		     (int16 *) dest,rngoff,skpnum!=0,
                      roff,ioff,badrng,
                      noise,mxpwr,seqatten[nave]*atstp,
                      thr,lmt,&abflg);
@@ -1049,15 +1085,15 @@ usleep(usecs);
         fprintf(stderr,"AZW seq %d :: rngoff %d rxchn %d\n",nave,rngoff,rxchn);
         if (debug) 
         fprintf(stderr,"AZW seq %d :: ACFCalculate acf\n",nave);
-        ACFCalculate(&tsgprm,(int16 *) rdata.main,rngoff,skpnum!=0,
-          roff,ioff,mplgs,lagtable,acfd,ACF_PART,dprm.samples,badrng,seqatten[nave]*atstp,NULL);
+        ACFCalculate(&tsgprm,(int16 *) dest,rngoff,skpnum!=0,
+          roff,ioff,mplgs,lagtable,acfd,ACF_PART,2*dprm.samples,badrng,seqatten[nave]*atstp,NULL);
         if (xcf ==1 ){
         if (debug) 
         fprintf(stderr,"AZW seq %d :: rngoff %d rxchn %d\n",nave,rngoff,rxchn);
         if (debug) 
           fprintf(stderr,"AZW seq %d :: ACFCalculate xcf\n",nave);
-          ACFCalculate(&tsgprm,(int16 *) rdata.back,rngoff,skpnum!=0,
-                    roff,ioff,mplgs,lagtable,xcfd,XCF_PART,dprm.samples,badrng,seqatten[nave]*atstp,NULL);
+          ACFCalculate(&tsgprm,(int16 *) dest,rngoff,skpnum!=0,
+                    roff,ioff,mplgs,lagtable,xcfd,XCF_PART,2*dprm.samples,badrng,seqatten[nave]*atstp,NULL);
         }
         if ((nave>0) && (seqatten[nave] !=seqatten[nave])) {
         if (debug) 

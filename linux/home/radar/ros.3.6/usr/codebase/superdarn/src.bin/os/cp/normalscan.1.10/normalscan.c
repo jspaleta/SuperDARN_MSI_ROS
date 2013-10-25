@@ -173,7 +173,7 @@ int main(int argc,char *argv[]) {
   mplgs=23;
   mpinc=1500;
   dmpinc=1500;
-  nrang=75;
+  nrang=100;
   rsep=45;
   txpl=300;
 
@@ -334,7 +334,7 @@ int main(int argc,char *argv[]) {
     } else xcf=0;
 
     skip=OpsFindSkip(scnsc,scnus);
-    
+
     if (backward) {
       bmnum=sbm-skip;
       if (bmnum<ebm) bmnum=sbm;
@@ -346,7 +346,7 @@ int main(int argc,char *argv[]) {
     do {
 
       TimeReadClock(&yr,&mo,&dy,&hr,&mt,&sc,&us);
-      
+
       if (OpsDayNight()==1) {
         stfrq=dfrq;
         mpinc=dmpinc;
@@ -355,55 +355,55 @@ int main(int argc,char *argv[]) {
         stfrq=nfrq;
         mpinc=nmpinc;
         frang=nfrang;
-      }        
+      }
       if(fixfrq>0) {
         stfrq=fixfrq;
         tfreq=fixfrq;
-        noise=0; 
+        noise=0;
       }
       sprintf(logtxt,"Integrating beam:%d intt:%ds.%dus (%d:%d:%d:%d)",bmnum,
                       intsc,intus,hr,mt,sc,us);
       ErrLog(errlog.sock,progname,logtxt);
 
       ErrLog(errlog.sock,progname,"Starting Integration.");
-            
+
     printf("Entering Site Start Intt Station ID: %s  %d\n",ststr,stid);
       SiteStartIntt(intsc,intus);
 
-      ErrLog(errlog.sock,progname,"Doing clear frequency search."); 
-   
+      ErrLog(errlog.sock,progname,"Doing clear frequency search.");
+
       sprintf(logtxt, "FRQ: %d %d", stfrq, frqrng);
       ErrLog(errlog.sock,progname, logtxt);
 
-      if(fixfrq<0) {      
-        tfreq=SiteFCLR(stfrq-frqrng/2,stfrq+frqrng/2);
+      if(fixfrq<0) {
+        tfreq=SiteFCLR(stfrq,stfrq+frqrng);
       }
       sprintf(logtxt,"Transmitting on: %d (Noise=%g)",tfreq,noise);
       ErrLog(errlog.sock,progname,logtxt);
-    
-      nave=SiteIntegrate(lags);   
+
+      nave=SiteIntegrate(lags);
       if (nave<0) {
         sprintf(logtxt,"Integration error:%d",nave);
-        ErrLog(errlog.sock,progname,logtxt); 
+        ErrLog(errlog.sock,progname,logtxt);
         continue;
       }
       sprintf(logtxt,"Number of sequences: %d",nave);
       ErrLog(errlog.sock,progname,logtxt);
 
       OpsBuildPrm(prm,ptab,lags);
-      
+
       OpsBuildIQ(iq,&badtr);
-            
+
       OpsBuildRaw(raw);
-   
+
       FitACF(prm,raw,fblk,fit);
-      
+
       msg.num=0;
       msg.tsize=0;
 
       tmpbuf=RadarParmFlatten(prm,&tmpsze);
       RMsgSndAdd(&msg,tmpsze,tmpbuf,
-		PRM_TYPE,0); 
+		PRM_TYPE,0);
 
       tmpbuf=IQFlatten(iq,prm->nave,&tmpsze);
       RMsgSndAdd(&msg,tmpsze,tmpbuf,IQ_TYPE,0);

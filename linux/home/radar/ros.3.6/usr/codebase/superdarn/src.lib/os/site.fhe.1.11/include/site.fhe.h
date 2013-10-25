@@ -1,6 +1,8 @@
 /* site.fhe.h
    ==========
-   Author: R.J.Barnes
+
+   Copied from site.ade.h.  -KTS 02Oct2013
+
 */
 
 

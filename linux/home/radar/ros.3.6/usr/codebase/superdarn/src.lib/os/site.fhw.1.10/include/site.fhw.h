@@ -1,6 +1,8 @@
 /* site.fhw.h
    ==========
-   Author: R.J.Barnes
+
+   Copied from site.adw.h  -KTS 02Oct2013
+
 */
 
 
