@@ -1,4 +1,4 @@
-/* normalscan.c
+/* themisscan.c
    ============
    Author: J.Spaleta
 */
@@ -28,7 +28,7 @@
  
 */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -88,13 +88,10 @@ char *droshost={"127.0.0.1"};
 
 int baseport=44100;
 
-
-
 struct TCPIPMsgHost errlog={"127.0.0.1",44100,-1};
-
 struct TCPIPMsgHost shell={"127.0.0.1",44101,-1};
 
-int tnum=4;      
+int tnum=4;
 struct TCPIPMsgHost task[4]={
   {"127.0.0.1",1,-1}, /* iqwrite */
   {"127.0.0.1",2,-1}, /* rawacfwrite */
@@ -139,39 +136,32 @@ int main(int argc,char *argv[]) {
 
   int exitpoll=0;
   int scannowait=0;
- 
+
   int scnsc=120;
   int scnus=0;
   int skip;
   int skipsc= 3;
   int skipus= 0;
-
   int cnt=0;
+  int i,n;
+
   unsigned char discretion=0;
 
-  int status=0,n;
+  int status=0;
 
   int fixfrq=0;
-  int camping_beam= 7; /* Default Camping Beam */
+  int cbm= 11 /* Default Camping Beam */
+  int tempF, tempB;
   int num_scans= 38;
-  /* Second within the 2min interval at which this beam is supposed to start */
-  int scan_times[ 38]=     {   
-    0,   3,   6,   9,  12,  15,  18,  21,  24,  27,  30,  33,  36,  39,  42,
-   45,  48,  51,  54,  60,  63,  66,  69,  72,  75,  78,  81,  84,  87,  90,
-   93,  96,  99, 102, 105, 108, 111, 114 };
-  /* beams for forward and backward scanning radars; 
- *   -1 will be replaced by the selected camping beam */
-  int forward_beams[ 38]=  {   
-    0,  -1,   1,  -1,   2,  -1,   3,  -1,   4,  -1,   5,  -1,   6,  -1,   7,
-   -1,   8,  -1,   9,  -1,  10,  -1,  11,  -1,  12,  -1,  13,  -1,  14,  -1,
-   15,  -1,  -1,  -1,  -1,  -1,  -1,  -1 };
-  int backward_beams[ 38]= {  
-   15,  -1,  14,  -1,  13,  -1,  12,  -1,  11,  -1,  10,  -1,   9,  -1,   8,
-   -1,   7,  -1,   6,  -1,   5,  -1,   4,  -1,   3,  -1,   2,  -1,   1,  -1,
-    0,  -1,  -1,  -1,  -1,  -1,  -1,  -1 };
 
+  /* new variables for dynamically creating beam sequences */
+  int *intgt;
+  int *fbms;
+  int *bbms;
+  int nintgs;
+  int integ_durr = 3;
 
-
+  /* standard radar defaults */
   cp=3300;
   intsc=2;
   intus=600000;
@@ -179,7 +169,7 @@ int main(int argc,char *argv[]) {
   mplgs=23;
   mpinc=1500;
   dmpinc=1500;
-  nrang=75;
+  nrang=100;
   rsep=45;
   txpl=300;
 
@@ -199,25 +189,17 @@ int main(int argc,char *argv[]) {
   OptionAdd( &opt, "nf", 'i', &nfrq);
   OptionAdd( &opt, "xcf", 'i', &xcnt);
 
-
-
+  OptionAdd( &opt, "sb",  'i',&sbm);	/* Set first beam of scan */
+  OptionAdd( &opt, "eb",  'i',&ebm);	/* Set last beam of scan */
 
   OptionAdd(&opt,"ep",'i',&errlog.port);
-  OptionAdd(&opt,"sp",'i',&shell.port); 
+  OptionAdd(&opt,"sp",'i',&shell.port);
 
-  OptionAdd(&opt,"bp",'i',&baseport); 
+  OptionAdd(&opt,"bp",'i',&baseport);
 
   OptionAdd(&opt,"ros",'t',&roshost);
 
-
-
-  OptionAdd(&opt,"stid",'t',&ststr); 
-
-  /* 
-  OptionAdd( &opt, "nowait", 'x', &scannowait);
-  OptionAdd(&opt,"sb",'i',&sbm);
-  OptionAdd(&opt,"eb",'i',&ebm);
-  */
+  OptionAdd(&opt,"stid",'t',&ststr);
 
   /* Transmit at this frequency */
   OptionAdd( &opt, "fixfrq", 'i', &fixfrq);
@@ -225,17 +207,12 @@ int main(int argc,char *argv[]) {
   OptionAdd( &opt, "camp", 'i', &camping_beam);
   OptionAdd( &opt, "c", 'i', &cnum);
 
-  arg=OptionProcess(1,argc,argv,&opt,NULL);  
+  arg=OptionProcess(1,argc,argv,&opt,NULL);
 
 
   /* make sure this is in the allowed range, otherwise set to default */
-  if ( (camping_beam < 0) && (camping_beam > 15) ) camping_beam= 7;
-  /* replace the -1 with the camping beam value */
-  for (n=1; n<num_scans; n++) {
-    if ( forward_beams[ n] == -1)  forward_beams[ n]= camping_beam;
-    if (backward_beams[ n] == -1) backward_beams[ n]= camping_beam;
-  }
- 
+  if ( (camping_beam < 0) && (camping_beam > 23) ) cbm= 12;
+
   if (ststr==NULL) ststr=dfststr;
 
   if (roshost==NULL) roshost=getenv("ROSHOST");
@@ -262,28 +239,103 @@ int main(int argc,char *argv[]) {
 
   SiteStart(roshost);
   arg=OptionProcess(1,argc,argv,&opt,NULL);
-  strncpy(combf,progid,80);   
- 
+
+
+  /* Create a list of the beams that will be integrated on, alternating
+   * between the camping beam and each other beam in turn */
+
+  /* number of integration periods possible in scan time */
+  nintgs = (int)floor((scnsc+scnus*1e-6 - 3)/integ_durr);
+
+  /* arrays for integration start times and beam sequences */
+  intgt = (int *)malloc(nintgs*sizeof(int));
+  fbms  = (int *)malloc(nintgs*sizeof(int));
+  bbms  = (int *)malloc(nintgs*sizeof(int));
+
+  for (i=0; i<nintgs; i++)
+  	intgt[i] = i*integ_durr;		/* start time of each integration preiod */
+
+  /* If backward is set for West radar, start and end beams need to be reversed for the
+   * beam assigning code that follows until "End of Dartmouth Mods".  Usual SuperDARN
+   * logic follows that for West radars sbm >= ebm and East radars sbm <= ebm.
+   * However, the Dartmouth code for assigning the beam number arrays, fbms & bbms,
+   * does not follow usual SuperDARN logic and always assumes sbm <= ebm.  -KTS 2/20/2012 */
+
+  if (backward == 1) {
+  	i = sbm;
+        sbm = ebm;
+        ebm = i;
+  }
+
+  /* Special case for when the first beam of a scan is
+     the camping beam */
+  if (sbm == cbm) {
+  	fbms[0] = sbm;
+        for(i = 1; i<nintgs; i++){
+        	if((i%2 == 1)&&((i+1)/2+sbm<=ebm)) fbms[i]=(i+1)/2+sbm;
+                else fbms[i] = cbm;
+        }
+        for(i = 0; i<nintgs; i++){
+                if((i%2 == 0)&&(ebm-(i/2)>sbm)) bbms[i]=ebm-(i/2);
+                else bbms[i] = cbm;
+        }
+  }
+  /* Other special case for when the last beam of a
+     scan is the camping beam */
+  else if (ebm == cbm){
+        bbms[0] = ebm;
+        for(i = 1; i<nintgs; i++){
+        	if((i%2 == 1)&&((ebm-(i+1)/2)>=sbm)) bbms[i]=ebm-(i+1)/2;
+                else bbms[i] = cbm;
+        }
+        for(i = 0; i<nintgs; i++){
+                if((i%2 == 0)&&(i/2+sbm<=ebm)) fbms[i]=i/2+sbm;
+                else fbms[i] = cbm;
+        }
+  }
+  /* Otherwise, the case below will work for camping
+     beams that are not on the ends of the scan */
+  else {
+        tempB = ebm;
+        tempF = sbm;
+        for(i = 0; i<nintgs; i++){
+        	if((i%2 == 0)&&(tempF<=ebm)) {
+                	/* exclude the camping beam from being included as a regular beam */
+                        if (tempF == cbm) tempF++;
+                        if (tempB == cbm) tempB--;
+                        fbms[i] = tempF;
+                        bbms[i] = tempB;
+                        tempF++;
+                        tempB--;
+                } else {
+                        fbms[i] = cbm;
+                        bbms[i] = cbm;
+                }
+        }
+  }
+  /* not sure if -nrang commandline option works */
+
+  strncpy(combf,progid,80);
+
   OpsSetupCommand(argc,argv);
   OpsSetupShell();
-   
+
   RadarShellParse(&rstable,"sbm l ebm l dfrq l nfrq l dfrang l nfrang l dmpinc l nmpinc l frqrng l xcnt l",                        
-                  &sbm,&ebm,                              
-                  &dfrq,&nfrq,                  
-                  &dfrang,&nfrang,                            
-                  &dmpinc,&nmpinc,                            
-                  &frqrng,&xcnt);      
-  
- 
+                  &sbm,&ebm,
+                  &dfrq,&nfrq,
+                  &dfrang,&nfrang,
+                  &dmpinc,&nmpinc,
+                  &frqrng,&xcnt);
+
+
   status=SiteSetupRadar();
 
   fprintf(stderr,"Status:%d\n",status);
-  
+
   if (status !=0) {
     ErrLog(errlog.sock,progname,"Error locating hardware.");
     exit (1);
   }
-
 
   if (discretion) cp= -cp;
 
@@ -300,7 +352,7 @@ int main(int argc,char *argv[]) {
     RMsgSndOpen(task[n].sock,strlen( (char *) command),command);     
   }
 
-  
+
   OpsFitACFStart();
 
   tsgid=SiteTimeSeq(ptab);
@@ -308,7 +360,7 @@ int main(int argc,char *argv[]) {
   do {
 
     if (SiteStartScan() !=0) continue;
-    
+
     if (OpsReOpen(2,0,0) !=0) {
       ErrLog(errlog.sock,progname,"Opening new files.");
       for (n=0;n<tnum;n++) {
@@ -318,9 +370,9 @@ int main(int argc,char *argv[]) {
     }
 
     scan=1;
-    
+
     ErrLog(errlog.sock,progname,"Starting scan.");
-   
+
     if (xcnt>0) {
       cnt++;
       if (cnt==xcnt) {
@@ -330,7 +382,7 @@ int main(int argc,char *argv[]) {
     } else xcf=0;
 
     skip=OpsFindSkip(scnsc,scnus);
-    
+
     {
       int tv;
       int bv;
@@ -344,12 +396,10 @@ int main(int argc,char *argv[]) {
       if (skip<0) skip=0;
     }
     if (backward) {
-      bmnum= backward_beams[skip];
+      bmnum= bbms[skip];
     } else {
-      bmnum=  forward_beams[skip];
+      bmnum= fbms[skip];
     }
-
-
 
     do {
 
@@ -368,7 +418,7 @@ int main(int argc,char *argv[]) {
       }
 
       TimeReadClock(&yr,&mo,&dy,&hr,&mt,&sc,&us);
-      
+
       if (OpsDayNight()==1) {
         stfrq=dfrq;
         mpinc=dmpinc;
@@ -377,22 +427,22 @@ int main(int argc,char *argv[]) {
         stfrq=nfrq;
         mpinc=nmpinc;
         frang=nfrang;
-      }        
+      }
 
       sprintf(logtxt,"Integrating beam:%d intt:%ds.%dus (%d:%d:%d:%d) cnum: %d",bmnum,
                       intsc,intus,hr,mt,sc,us,cnum);
       ErrLog(errlog.sock,progname,logtxt);
 
       ErrLog(errlog.sock,progname,"Starting Integration.");
-            
+
       SiteStartIntt(intsc,intus);
 
-      ErrLog(errlog.sock,progname,"Doing clear frequency search."); 
-   
+      ErrLog(errlog.sock,progname,"Doing clear frequency search.");
+
       sprintf(logtxt, "FRQ: %d %d", stfrq, frqrng);
       ErrLog(errlog.sock,progname, logtxt);
 
-            
+
       tfreq=SiteFCLR(stfrq,stfrq+frqrng);
       if ( (fixfrq > 8000) && (fixfrq < 25000) ) tfreq= fixfrq; 
 
@@ -435,16 +485,15 @@ int main(int argc,char *argv[]) {
 
       tmpbuf=RawFlatten(raw,prm->nrang,prm->mplgs,&tmpsze);
       RMsgSndAdd(&msg,tmpsze,tmpbuf,RAW_TYPE,0); 
- 
+
       tmpbuf=FitFlatten(fit,prm->nrang,&tmpsze);
       RMsgSndAdd(&msg,tmpsze,tmpbuf,FIT_TYPE,0); 
 
-        
+
       RMsgSndAdd(&msg,strlen(progname)+1,(unsigned char *) progname,
 		NME_TYPE,0);   
-     
 
-     
+
       for (n=0;n<tnum;n++) RMsgSndSend(task[n].sock,&msg); 
 
       for (n=0;n<msg.num;n++) {
@@ -452,7 +501,7 @@ int main(int argc,char *argv[]) {
         if (msg.data[n].type==IQ_TYPE) free(msg.ptr[n]);
         if (msg.data[n].type==RAW_TYPE) free(msg.ptr[n]);
         if (msg.data[n].type==FIT_TYPE) free(msg.ptr[n]); 
-      }          
+      }
 
       RadarShell(shell.sock,&rstable);
 
@@ -461,9 +510,9 @@ int main(int argc,char *argv[]) {
       if (skip == (num_scans-1)) break;
       skip= skip + 1;
       if (backward) {
-        bmnum= backward_beams[ skip];
+        bmnum= bbms[ skip];
       } else {
-        bmnum=  forward_beams[ skip];
+        bmnum= fbms[ skip];
       }
 
     } while (1);
@@ -471,16 +520,16 @@ int main(int argc,char *argv[]) {
     ErrLog(errlog.sock,progname,"Waiting for scan boundary."); 
     if ((exitpoll==0) && (scannowait==0)) SiteEndScan(scnsc,scnus);
   } while (exitpoll==0);
-  
-  
+
+
   for (n=0;n<tnum;n++) RMsgSndClose(task[n].sock);
-  
+
 
   ErrLog(errlog.sock,progname,"Ending program.");
 
 
   SiteExit(0);
 
-  return 0;   
-} 
- 
+  return 0;
+}
+
