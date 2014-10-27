@@ -676,7 +676,7 @@ int main(int argc, char **argv){
                         c=client.channel-1; 
                         if(ifmode) {
                           client.rfreq=(-SAMPLE_FREQ+IF_FREQ); 
-                          printf("Setting IF recv freq: %d %d %d\n",SAMPLE_FREQ,IF_FREQ,client.rfreq);  
+                          if(verbose > 1 ) printf("Setting IF recv freq: %d %d %d\n",SAMPLE_FREQ,IF_FREQ,client.rfreq);  
                         }
                         if ((ready_index[r][c]>=0) && (ready_index[r][c] <maxclients) ) {
                           clients[ready_index[r][c]]=client;

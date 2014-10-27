@@ -15,4 +15,6 @@ DSTPATH=$(USR_LIBPATH)
 OUTPUT = site.adw
 LIBS=-lacf.1 -ltsg.1 -lacfex.1 -lshmem.1 
 
+LFLAGS += -lrt
+
 include $(MAKELIB).$(SYSTEM)

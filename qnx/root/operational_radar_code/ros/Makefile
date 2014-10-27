@@ -4,7 +4,7 @@ drivers: receiver dds timing diodriver gps
 iniparser:
 	cd iniparser3.0b && $(MAKE) clean && $(MAKE) 
 fftw3:
-	cd fftw-3.2.2 && $(MAKE) clean && $(MAKE)
+	cd fftw-3.2.2 && ./configure && $(MAKE) clean && $(MAKE)
 arbyserver:
 	cd server && ${MAKE} clean &&  ${MAKE} all
 arbyclient:
