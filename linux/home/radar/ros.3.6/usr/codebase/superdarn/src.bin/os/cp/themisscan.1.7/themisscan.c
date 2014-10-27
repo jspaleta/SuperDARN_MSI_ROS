@@ -204,14 +204,14 @@ int main(int argc,char *argv[]) {
   /* Transmit at this frequency */
   OptionAdd( &opt, "fixfrq", 'i', &fixfrq);
   /* Camping Beam */
-  OptionAdd( &opt, "camp", 'i', &camping_beam);
+  OptionAdd( &opt, "cbm", 'i', &cbm);
   OptionAdd( &opt, "c", 'i', &cnum);
 
   arg=OptionProcess(1,argc,argv,&opt,NULL);
 
 
   /* make sure this is in the allowed range, otherwise set to default */
-  if ( (camping_beam < 0) && (camping_beam > 23) ) cbm= 12;
+  if ( (cbm < 0) && (cbm > 23) ) cbm= 12;
 
   if (ststr==NULL) ststr=dfststr;
 
