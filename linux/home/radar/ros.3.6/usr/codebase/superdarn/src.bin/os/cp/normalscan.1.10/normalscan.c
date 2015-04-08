@@ -167,8 +167,8 @@ int main(int argc,char *argv[]) {
   printf("Size of Struct SiteSettings  %d\n",(int)sizeof(struct SiteSettings));
 
   cp=150;
-  intsc=7;
-  intus=0;
+  intsc=7; /* Set default integration time for normalscan (slow) */
+  intus=0; /* Integration time is dynamically calculated below based on the numbuer of beams. */
   mppul=8;
   mplgs=23;
   mpinc=1500;
@@ -273,14 +273,13 @@ int main(int argc,char *argv[]) {
   }
 
   beams=abs(ebm-sbm)+1;
-  if(beams > 16) {
-    if (scannowait==0) {
-      total_scan_usecs=(scnsc-3)*1E6+scnus;
-      total_integration_usecs=total_scan_usecs/beams;
-      intsc=total_integration_usecs/1E6;
-      intus=total_integration_usecs -(intsc*1E6);
-    }
+  if (scannowait==0) {
+    total_scan_usecs=(scnsc-3)*1E6+scnus;
+    total_integration_usecs=total_scan_usecs/beams;
+    intsc=total_integration_usecs/1E6;
+    intus=total_integration_usecs -(intsc*1E6);
   }
+
   if (discretion) cp= -cp;
 
   txpl=(rsep*20)/3;
