@@ -61,7 +61,9 @@
 
 #include "version.h"
 
-#define DEF_PORT 44103
+#include "rtserver.h"
+
+#define DEF_PORT 41103
 
 struct OptionData opt;
 
@@ -90,23 +92,33 @@ int errport=44000;
 int errsock=-1;
 
 char errbuf[1024];
-
+int outpipe=-1;
 int channel=-1;
 
-int operate(pid_t parent,int sock,int port) {
+/*
+Operate:
+Called after the client connects parses fit and prm data
+@param:
+sock: msgsock of the server
+port: server port
+run: indicates if it is the first run or subsequent calls
+*/
+int operate(int sock,int port,int run) {
  
   int s,i;
   int msg,rmsg;
-
+  errsock = -1;
   unsigned char *cbufadr=NULL;
   size_t cbuflen;
-  int outpipe=-1;
+
 
   unsigned char *bufadr=NULL;
   int bufsze;
-
-  outpipe=forkinet(port);
-/* JDS required to avoid rtserver race condition that deadlocks controlprograms */
+  if(run ==0){
+  	  outpipe=forkinet(port);
+  }
+/* JDS required to avoid rtserver race condition 
+that deadlocks controlprograms */
   sleep(1);
 
   while(1) {
@@ -150,47 +162,48 @@ int operate(pid_t parent,int sock,int port) {
             dmsg[dptr].pbuf=NULL;
             dmsg[dptr].fbuf=NULL;
             dnum++;
-	  }
-          switch (rblk.data[i].type) {
-	  case PRM_TYPE:
-            dmsg[dptr].pbuf=rblk.ptr[rblk.data[i].index];
-	    break;
-          case FIT_TYPE:
-            dmsg[dptr].fbuf=rblk.ptr[rblk.data[i].index];
-	    break;
-          default:
-            break;
-	  }
+          }
+         switch (rblk.data[i].type) {
+         	case PRM_TYPE:
+         		dmsg[dptr].pbuf=rblk.ptr[rblk.data[i].index];
+         		break;
+         	case FIT_TYPE:
+         		dmsg[dptr].fbuf=rblk.ptr[rblk.data[i].index];
+         		break;
+         	default:
+         		break;
+         }
       }
-
-
 
 
       for (dptr=0;dptr<dnum;dptr++) {
 
-	if (dmsg[dptr].pbuf==NULL) continue;
-        if (dmsg[dptr].fbuf==NULL) continue;
-        RadarParmExpand(prm,dmsg[dptr].pbuf);
-        FitExpand(fit,prm->nrang,dmsg[dptr].fbuf);
+      	  if (dmsg[dptr].pbuf==NULL) continue;
+      	  if (dmsg[dptr].fbuf==NULL) continue;
 
-        if ((channel !=-1) && (prm->channel !=0)) {
-          if ((channel==1) && (prm->channel==2)) continue;
-          if ((channel==2) && (prm->channel!=2)) continue;
-        }
-        if (outpipe==-1) {
-          sprintf(errbuf,"Child process died - Restarting.");
-          ErrLog(errsock,taskname,errbuf);  
-          outpipe=forkinet(port);
-        }
-        bufadr=fitpacket(prm,fit,&bufsze);
-        if (bufadr !=NULL) {
-          if (outpipe !=-1) s=ConnexWriteIP(outpipe,bufadr,bufsze);
-          free(bufadr);
-	}       
-      }
+      	  s = RadarParmExpand(prm,dmsg[dptr].pbuf);
 
+      	  if (s !=-1){ 
+      	  	  s = FitExpand(fit,prm->nrang,dmsg[dptr].fbuf);
+      	  }
+      	  else{
+      	  	fit = NULL;  
+      	  }
 
-      
+      	  if ((channel !=-1) && (prm->channel !=0)) {
+      	  	  if ((channel==1) && (prm->channel==2)) continue;
+      	  	  if ((channel==2) && (prm->channel!=2)) continue;
+      	  }
+      	  if (outpipe==-1) {
+      	  	  sprintf(errbuf,"Child process died - Restarting.");
+      	  	  ErrLog(errsock,taskname,errbuf);  
+      	  	  if(run ==0){
+      	  	  	  outpipe=forkinet(port);
+      	  	  }
+      	  }
+      	  return 0;
+      	}
+   
       if (store !=NULL) free(store);
       store=NULL;
     }  
@@ -199,165 +212,230 @@ int operate(pid_t parent,int sock,int port) {
   return 0;
 }
 
-int main(int argc,char *argv[]) {
+/*
+Initialize
+The old main method sets up the server to the 
+ports recieved in argv and listens for other clients to connect.
+Once the other clients connect once connected the operate method
+is called
+@params run: the msgsock number. The initialize method is called 
+	repeatedly after the server is already initialized and it indicates
+	to skip the initalization and send in the msgsock
+	argc and *argv[]:takes in command line arguments
+@return msgsock
+*/
+int initialize(int run,int argc, char *argv[]) {
   
   int rport=DEF_PORT,tport=1024,arg=0;
-  int sock;
-
+  int sock,s;
   int sc_reuseaddr=1,temp;
-
   unsigned char help=0; 
   unsigned char option=0; 
-
   socklen_t length;
   socklen_t clength;
-
+  int outpipe = -1;
   struct sockaddr_in server;
   struct sockaddr_in client;
+  if(run ==0){
+	  fd_set ready;
+	  struct hostent *gethostbyname();
+	  pid_t root;
+	
+	  char *chstr=NULL;
+	
+	  int msgsock=0;	
+	
+	  prm=RadarParmMake();
+	  fit=FitMake();
 
-  fd_set ready;
-
-  struct hostent *gethostbyname();
-  pid_t root;
-
-  char *chstr=NULL;
-
-  int msgsock=0;
-
-  prm=RadarParmMake();
-  fit=FitMake();
-
-  OptionAdd(&opt,"-help",'x',&help);
-  OptionAdd(&opt,"-option",'x',&option);
-
-  OptionAdd(&opt,"rp",'i',&rport);
-  OptionAdd(&opt,"tp",'i',&tport);
-
-
-  OptionAdd(&opt,"eh",'t',&errhost);
-  OptionAdd(&opt,"ep",'i',&errport);
-
-  OptionAdd(&opt,"c",'t',&chstr);
-
-  arg=OptionProcess(1,argc,argv,&opt,NULL);
-
-  if (help==1) {
-    OptionPrintInfo(stdout,hlpstr);
-    exit(0);
-  }
-
-  if (option==1) {
-    OptionDump(stdout,&opt);
-    exit(0);
-  }
-
-  if (chstr !=NULL) {
-    if (tolower(chstr[0])=='a') channel=1;
-    if (tolower(chstr[0])=='b') channel=2;
-  }
-
-
-  if (errhost==NULL) errhost=derrhost;
-  errsock=TCPIPMsgOpen(errhost,errport);
-
-  sprintf(errbuf,"Started (version %s.%s) listening on port %d for control program, and on port %d for clients",
-          MAJOR_VERSION,MINOR_VERSION,rport,tport);
-  ErrLog(errsock,taskname,errbuf);  
-
-
-  signal(SIGCHLD,SIG_IGN); 
-  signal(SIGPIPE,SIG_IGN);
-
-  root=getpid();
-
-  sock=socket(AF_INET,SOCK_STREAM,0); /* create our listening socket */
-  if (sock<0) {
-    perror("opening stream socket");
-    exit(1);
-  }
-
-  /* set socket options */
-  temp=setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&sc_reuseaddr,
-                 sizeof(sc_reuseaddr));
-
-  /* name and bind socket to an address and port number */
-
-  server.sin_family=AF_INET;
-  server.sin_addr.s_addr=INADDR_ANY;
-  if (rport !=0) server.sin_port=htons(rport); 
-  else server.sin_port=0;
-  
-  if (bind(sock,(struct sockaddr *) &server,sizeof(server))) {
-     perror("binding stream socket");
-     exit(1);
-  }
-
-  /* Find out assigned port number and print it out */
-
-  length=sizeof(server);
-  if (getsockname(sock,(struct sockaddr *) &server,&length)) {
-     perror("getting socket name");
-     exit(1);
-  }
-
-  listen(sock,5); /* mark our socket willing to accept connections */
-  
-  do {
-
-      /* block until someone wants to attach to us */
-
-      FD_ZERO(&ready);
-      FD_SET(sock,&ready);
-      if (select(sock+1,&ready,0,0,NULL) < 0) { 
-       perror("while testing for connections");
-       continue;
-      }
-     
-      /* Accept the connection from the client */
-
-      fprintf(stdout,"Accepting a new connection...\n");
-      clength=sizeof(client);
-      msgsock=accept(sock,(struct sockaddr *) &client,&clength);
-        
-      if (msgsock==-1) {
-         perror("accept"); 
-         continue;
-      }
-
-      if (fork() == 0) {
-        close(sock);
-        operate(root,msgsock,tport);
-        exit(0);
-      }
-      close (msgsock);
-  } while(1);
-
- 
-  return 0;
+	  OptionAdd(&opt,"-help",'x',&help);
+	  OptionAdd(&opt,"-option",'x',&option);
+	
+	  OptionAdd(&opt,"rp",'i',&rport);
+	  OptionAdd(&opt,"tp",'i',&tport);
+	
+	  OptionAdd(&opt,"eh",'t',&errhost);
+	  OptionAdd(&opt,"ep",'i',&errport);
+	
+	  OptionAdd(&opt,"c",'t',&chstr);
+	
+	  arg=OptionProcess(0,argc,argv,&opt,NULL);
+	
+	  if (help==1) {
+		OptionPrintInfo(stdout,hlpstr);
+		exit(0);
+	  }
+	
+	  if (option==1) {
+		OptionDump(stdout,&opt);
+		exit(0);
+	  }
+	
+	  if (chstr !=NULL) {
+		if (tolower(chstr[0])=='a') channel=1;
+		if (tolower(chstr[0])=='b') channel=2;
+	  }
+	
+	
+	  if (errhost==NULL) errhost=derrhost;
+	  errsock=TCPIPMsgOpen(errhost,errport);
+	
+	  sprintf(errbuf,"Started (version %s.%s) listening on port %d for control program, and on port %d for clients",
+			  MAJOR_VERSION,MINOR_VERSION,rport,tport);
+	  ErrLog(errsock,taskname,errbuf);  
+	
+	
+	  signal(SIGCHLD,SIG_IGN); 
+	  signal(SIGPIPE,SIG_IGN);
+	
+	  root=getpid();
+	
+	  sock=socket(AF_INET,SOCK_STREAM,0); /* create our listening socket */
+	  if (sock<0) {
+		perror("opening stream socket");
+		exit(1);
+	  }
+	
+	  /* set socket options */
+	  temp=setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&sc_reuseaddr,
+					 sizeof(sc_reuseaddr));
+	
+	  /* name and bind socket to an address and port number */
+	
+	  server.sin_family=AF_INET;
+	  server.sin_addr.s_addr=INADDR_ANY;
+	  if (rport !=0) server.sin_port=htons(rport); 
+	  else server.sin_port=0;
+	  
+	  if (bind(sock,(struct sockaddr *) &server,sizeof(server))) {
+		 perror("binding stream socket");
+		 exit(1);
+	  }
+	
+	  /* Find out assigned port number and print it out */
+	
+	  length=sizeof(server);
+	  if (getsockname(sock,(struct sockaddr *) &server,&length)) {
+		 perror("getting socket name");
+		 exit(1);
+	  }
+	  listen(sock,5); /* mark our socket willing to accept connections */
+	  do {
+	
+		  /* block until someone wants to attach to us */
+	
+		  FD_ZERO(&ready);
+		  FD_SET(sock,&ready);
+		  if (select(sock+1,&ready,0,0,NULL) < 0) { 
+		   perror("while testing for connections");
+		   continue;
+		  }
+		 
+		  /* Accept the connection from the client */
+	
+		  clength=sizeof(client);
+		  msgsock=accept(sock,(struct sockaddr *) &client,&clength);
+			
+		  if (msgsock==-1) {
+			 perror("accept"); 
+			 continue;
+		  }
+	  
+		  if (fork() == 0) {
+			close(sock);
+			s = operate(msgsock,tport,run);
+			if (s!=0){
+				exit(0);
+        	}
+        	else{
+        		return msgsock;
+        	}
+		  }
+		  close (msgsock);
+	  } while(1);
+	    }
+       printf("Outpipe %d\n",s);
+        if (s!=0){
+        	exit(0);
+        }
+        else{
+        	return run;
+        }
+  return run;
 
 }
-   
 
- 
+/*
+Main method calls initialize
+*/
+int main(int argc, char *argv[]){
+	
+	initialize(0,argc,argv);
+	return 0;
+}
+/*
+Returns the RadarParm structure
+*/
+struct RadarParm* getRadarParm(){
+	return prm;
+}
 
+/*
+Returns lag array
+*/
+int16 return_lag(int index1,int index2){
+	return prm->lag[index1][index2];	
+}
 
+/*
+returns pulse array
+*/
+int16 return_pulse(int index){
+	return prm->pulse[index];	
+}
+/*
+Returns the Fit data structure
+*/
+struct FitData* getFitData(){
+	return fit;
+}
 
+/*
+returns the FitNoise structure
+*/
+struct FitNoise* return_noise(){
+	return &fit->noise;	
+}
 
+/*
+Returns the FitRange for rng or xrng
+@params: 
+index: array index
+xflag: flag indicator if data being returned is xrng or rng
+*/
+struct FitRange* return_rng_xrng(int index,int xflag){
+	if(xflag){
+		return &fit->xrng[index];
+	}
+	else{
+		return &fit->rng[index];	
+	}
+}
 
+/*
+Returns the FitElv struture
+@params:
+index: array index
+*/
+struct FitElv* return_elv(int index){
+	return &fit->elv[index];
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/*
+Returns outpipe information
+*/
+int get_outpipe(){
+	return outpipe;	
+}
 
 
