@@ -26,8 +26,8 @@ rawacfwrite -r sps.b -lp 42102 -ep 42000 &
 
 sleep 2
 echo "Ready for Control Programs"
-rtserver -rp 41104 -ep 41000 -tp 10011 &
-rtserver -rp 42104 -ep 42000 -tp 10021 &
+server.py -rp 41104 -ep 41000 -tp 10011 &
+server.py -rp 42104 -ep 42000 -tp 10021 &
 
 sleep 2 
 schedule -v -l /data/ros/scdlog/sps.a.scdlog -f /data/ros/scd/sps.a.scd  &
