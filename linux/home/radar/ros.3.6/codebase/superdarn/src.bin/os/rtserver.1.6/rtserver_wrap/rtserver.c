@@ -95,14 +95,7 @@ char errbuf[1024];
 int outpipe=-1;
 int channel=-1;
 
-/*
-Operate:
-Called after the client connects parses fit and prm data
-@param:
-sock: msgsock of the server
-port: server port
-run: indicates if it is the first run or subsequent calls
-*/
+
 int operate(int sock,int port,int run) {
  
   int s,i;
@@ -117,8 +110,7 @@ int operate(int sock,int port,int run) {
   if(run ==0){
   	  outpipe=forkinet(port);
   }
-/* JDS required to avoid rtserver race condition 
-that deadlocks controlprograms */
+/* JDS required to avoid rtserver race condition that deadlocks controlprograms */
   sleep(1);
 
   while(1) {
@@ -176,6 +168,8 @@ that deadlocks controlprograms */
       }
 
 
+
+
       for (dptr=0;dptr<dnum;dptr++) {
 
       	  if (dmsg[dptr].pbuf==NULL) continue;
@@ -212,18 +206,6 @@ that deadlocks controlprograms */
   return 0;
 }
 
-/*
-Initialize
-The old main method sets up the server to the 
-ports recieved in argv and listens for other clients to connect.
-Once the other clients connect once connected the operate method
-is called
-@params run: the msgsock number. The initialize method is called 
-	repeatedly after the server is already initialized and it indicates
-	to skip the initalization and send in the msgsock
-	argc and *argv[]:takes in command line arguments
-@return msgsock
-*/
 int initialize(int run,int argc, char *argv[]) {
   
   int rport=DEF_PORT,tport=1024,arg=0;
@@ -345,6 +327,7 @@ int initialize(int run,int argc, char *argv[]) {
 			close(sock);
 			s = operate(msgsock,tport,run);
 			if (s!=0){
+				printf("In exit\n");
 				exit(0);
         	}
         	else{
@@ -354,65 +337,38 @@ int initialize(int run,int argc, char *argv[]) {
 		  close (msgsock);
 	  } while(1);
 	    }
+       s = operate(run,tport,1);
        printf("Outpipe %d\n",s);
         if (s!=0){
+        	printf("In 2nd exit\n");
         	exit(0);
         }
         else{
+        	printf("Returning run\n");
         	return run;
         }
   return run;
 
 }
 
-/*
-Main method calls initialize
-*/
 int main(int argc, char *argv[]){
 	
 	initialize(0,argc,argv);
 	return 0;
 }
-/*
-Returns the RadarParm structure
-*/
+
 struct RadarParm* getRadarParm(){
 	return prm;
 }
 
-/*
-Returns lag array
-*/
-int16 return_lag(int index1,int index2){
-	return prm->lag[index1][index2];	
-}
-
-/*
-returns pulse array
-*/
-int16 return_pulse(int index){
-	return prm->pulse[index];	
-}
-/*
-Returns the Fit data structure
-*/
 struct FitData* getFitData(){
 	return fit;
 }
 
-/*
-returns the FitNoise structure
-*/
 struct FitNoise* return_noise(){
 	return &fit->noise;	
 }
 
-/*
-Returns the FitRange for rng or xrng
-@params: 
-index: array index
-xflag: flag indicator if data being returned is xrng or rng
-*/
 struct FitRange* return_rng_xrng(int index,int xflag){
 	if(xflag){
 		return &fit->xrng[index];
@@ -422,18 +378,18 @@ struct FitRange* return_rng_xrng(int index,int xflag){
 	}
 }
 
-/*
-Returns the FitElv struture
-@params:
-index: array index
-*/
 struct FitElv* return_elv(int index){
 	return &fit->elv[index];
 }
 
-/*
-Returns outpipe information
-*/
+int16 return_lag(int index1,int index2){
+	return prm->lag[index1][index2];	
+}
+
+int16 return_pulse(int index){
+	return prm->pulse[index];	
+}
+
 int get_outpipe(){
 	return outpipe;	
 }

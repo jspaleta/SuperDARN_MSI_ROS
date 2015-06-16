@@ -1,0 +1,40 @@
+To rewrap rtserver you must have swig installed on your machine. It can be downloaded here:
+http://www.swig.org/
+
+The .h files included here have been modified to allow SWIG to compile if you replace or delete them your swig will look like it is compling correctly but will error when run. 
+
+It is assumed if you are updaing the rtserver wrap because some of the other files have been updated. Please make sure the updated *.o files are included in the recompliation.
+
+Those are:
+connect.o 
+fitpacket.o 
+fork.o 
+msgmem.o 
+socket.o 
+radar.o 
+rmsgrcv.o 
+rprm.o 
+option.o 
+fit.o 
+dmap.o 
+convert.o 
+merge.o 
+errlog.o 
+time.o 
+tcpipmsg.o 
+msg.o 
+printinfo.o 
+fitwrite.o 
+rtserver.o
+
+Here are the commands that need to entered in the command line to recompile:
+
+swig -python -I$IPATH/base -I$IPATH/general -I$IPATH/superdarn -Wall rtserver.i 
+
+cc -fPIC -g -Wall -ansi -D_GNU_SOURCE -D_LINUX -D_SVGLIB_ -I/home/mrsimon/ros.3.6//include/base -I/home/mrsimon/ros.3.6//include/general -I/home/mrsimon/ros.3.6//include/superdarn -I/usr/include/python2.7/ -c rtserver_wrap.c 
+
+gcc -shared -g rtserver_wrap.o connect.o fitpacket.o fork.o msgmem.o socket.o radar.o rmsgrcv.o rprm.o option.o fit.o dmap.o convert.o merge.o errlog.o time.o tcpipmsg.o msg.o printinfo.o fitwrite.o rtserver.o -o _rtserver.so 
+
+Once compiled all you need to run it on another machine is the PYTHONPATH, _rtserver.so, and rtserver.py
+
+PYTHONPATH: export PYTHONPATH=~/SuperDARN_MSI_ROS-sps-devel/linux/home/radar/ros.3.6/codebase/superdarn/src.bin/os/rtserver.1.6/

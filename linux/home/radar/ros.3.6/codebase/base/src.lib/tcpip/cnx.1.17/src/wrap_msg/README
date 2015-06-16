@@ -1,0 +1,13 @@
+Simplier than setting up rtserver.so
+
+Modify if changing connex.h or msg.c
+
+code to run if making changes:
+
+swig -python -I$IPATH/base -Wall msg.i
+
+cc -fPIC -g -Wall -ansi -D_GNU_SOURCE -D_LINUX -D_SVGLIB_ -I/usr/include/python2
+.7/ -c msg_wrap.c 
+
+gcc -shared -g msg_wrap.o msg.o -o _msg.so 
+
