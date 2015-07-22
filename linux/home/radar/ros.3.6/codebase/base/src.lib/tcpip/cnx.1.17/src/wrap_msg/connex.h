@@ -36,7 +36,7 @@
 #define OPEN_FAIL 2
 #define CONNECT_FAIL 3
 
-extern int ConnexErr;
+/*extern int ConnexErr;*/
 
 
 #define MSG_ID 0x001e0849
