@@ -35,7 +35,7 @@
 #include "connex.h"
 
 
-/*int ConnexErr;*/
+
 int ConnexWriteMem(unsigned char *outbuf,unsigned int outsize,
                    unsigned char *buffer,unsigned int size) {
  
@@ -67,11 +67,9 @@ int ConnexReadMem(unsigned char *inbuf,unsigned int insize,
   unsigned char length[4];
   unsigned long int size;
 
-  /*ConnexErr=0;*/
  
   while (cnt<4) { 
     if (inbuf[cnt] != msg_id[cnt]) {
-       /*ConnexErr=MSGERR_OUT_OF_SYNC;*/
        break;
     }
     cnt++;
@@ -91,7 +89,6 @@ int ConnexReadMem(unsigned char *inbuf,unsigned int insize,
   }
 
   if ((*buffer=malloc(size)) ==NULL) {
-    /*ConnexErr=MSGERR_NOMEM;*/
     return -1;
   }
   memcpy((*buffer),inbuf+8,size);
@@ -119,7 +116,6 @@ int ConnexWriteIP(int fildes,char *buffer,unsigned int size) {
   while (cnt<8) { 
     byte=write(fildes,((char*) &msg)+cnt,8-cnt);
     if (byte<=0) {
-      /*ConnexErr=MSGERR_PIPE_CLOSED;*/
       break;
     }
     cnt+=byte;
@@ -130,7 +126,6 @@ int ConnexWriteIP(int fildes,char *buffer,unsigned int size) {
   while (cnt<size) {
     byte=write(fildes,buffer+cnt,size-cnt); 
     if (byte<=0) {
-      /*ConnexErr=MSGERR_PIPE_CLOSED;*/
       break;
     }
     cnt+=byte;
@@ -150,16 +145,14 @@ int ConnexReadIP(int fildes,unsigned char **buffer) {
   unsigned char length[4];
   unsigned long int size;
 
-  /*ConnexErr=0;*/
- 
   while (cnt<4) { 
     byte=read(fildes,&byte_buf,1);
     if (byte<=0) {
-       /*ConnexErr=MSGERR_PIPE_CLOSED;*/
+       
        break;
     }
     if (byte_buf != msg_id[cnt]) {
-       /*ConnexErr=MSGERR_OUT_OF_SYNC;*/
+       
        break;
     }
     cnt++;
@@ -170,7 +163,7 @@ int ConnexReadIP(int fildes,unsigned char **buffer) {
   while (cnt<4) {
     byte=read(fildes,((char *) length)+cnt,4-cnt); 
     if (byte<=0) {
-      /*ConnexErr=MSGERR_PIPE_CLOSED;*/
+      
       break;
     }
     cnt+=byte;
@@ -192,13 +185,13 @@ int ConnexReadIP(int fildes,unsigned char **buffer) {
   if (*buffer !=NULL) {  
     unsigned char *tmp;  
     if ((tmp=realloc(*buffer,size)) ==NULL) {
-      /*ConnexErr=MSGERR_NOMEM;*/
+      
       return -1;
     }
     *buffer=tmp;
   } else {
     if ((*buffer=malloc(size)) ==NULL) {
-      /*ConnexErr=MSGERR_NOMEM;*/
+     
      return -1;
     }
   }
@@ -207,7 +200,7 @@ int ConnexReadIP(int fildes,unsigned char **buffer) {
   while (cnt<size) {
     byte=read(fildes,(*buffer)+cnt,size-cnt); 
     if (byte<=0) {
-      /*ConnexErr=MSGERR_PIPE_CLOSED;*/
+      
       break;
     }
     cnt+=byte;

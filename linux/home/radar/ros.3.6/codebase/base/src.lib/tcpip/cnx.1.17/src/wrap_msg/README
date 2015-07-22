@@ -11,3 +11,8 @@ cc -fPIC -g -Wall -ansi -D_GNU_SOURCE -D_LINUX -D_SVGLIB_ -I/usr/include/python2
 
 gcc -shared -g msg_wrap.o msg.o -o _msg.so 
 
+FILES THAT MUST BE CHANGED:
+	remove ConnexErr from connex.h, msg.c
+
+read the README file at rtserver_wrap if you have any more questions
+

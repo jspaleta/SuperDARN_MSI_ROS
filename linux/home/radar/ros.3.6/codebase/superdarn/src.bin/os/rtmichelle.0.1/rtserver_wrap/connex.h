@@ -36,8 +36,6 @@
 #define OPEN_FAIL 2
 #define CONNECT_FAIL 3
 
-extern int ConnexErr;
-
 
 #define MSG_ID 0x001e0849
 #define MSGERR_PIPE_CLOSED 0x00

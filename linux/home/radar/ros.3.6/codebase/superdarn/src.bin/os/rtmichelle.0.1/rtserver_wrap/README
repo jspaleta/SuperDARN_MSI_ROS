@@ -31,13 +31,21 @@ Here are the commands that need to entered in the command line to recompile:
 
 swig -python -I$IPATH/base -I$IPATH/general -I$IPATH/superdarn -Wall rtserver.i 
 
-cc -fPIC -g -Wall -ansi -D_GNU_SOURCE -D_LINUX -D_SVGLIB_ -I/home/mrsimon/ros.3.6//include/base -I/home/mrsimon/ros.3.6//include/general -I/home/mrsimon/ros.3.6//include/superdarn -I/usr/include/python2.7/ -c rtserver_wrap.c 
+-- modify to fit radars current version of python
+cc -fPIC -g -Wall -ansi -D_GNU_SOURCE -D_LINUX -D_SVGLIB_ -I$IPATH/base -I$IPATH/general -I$IPATH/superdarn -I/usr/include/python2.7/ -c rtserver_wrap.c 
 
 gcc -shared -g rtserver_wrap.o connect.o fitpacket.o fork.o msgmem.o socket.o radar.o rmsgrcv.o rprm.o option.o fit.o dmap.o convert.o merge.o errlog.o time.o tcpipmsg.o msg.o printinfo.o fitwrite.o rtserver.o -o _rtserver.so 
 
 Once compiled all you need to run it on another machine is the PYTHONPATH, _rtserver.so, and rtserver.py
 
-PYTHONPATH: export PYTHONPATH=~/SuperDARN_MSI_ROS-sps-devel/linux/home/radar/ros.3.6/codebase/superdarn/src.bin/os/rtserver.1.6/
+export PYTHONPATH=/usr/local/src/SuperDARN_MSI_ROS/linux/home/radar/ros.3.6/codebase/superdarn/src.bin/os/rtmichelle.0.1/:/usr/local/src/SuperDARN_MSI_ROS/linux/home/radar/ros.3.6/codebase/base/src.lib/tcpip/cnx.1.17/src/:PYTHONPATH
 
-FINAL NOTE: tcpipmsg.c has been modified to remove extern int TCPIPMsgErr; 
+FILES TO EDIT (these should be in the wrap folder but if they are not please copy the current version to the wrap folder and edit):
+	connex.h, msg.c has been modified to remove extern int ConnexErr;
+	tcpipmsg.c,tcpipmsg.h has been modified to remove extern int TCPIPMsgErr;
+	zlib seems to be a bit out of date at certain radars so gzwrite and gzread need to be removed from dmap.c and covert.c
+	The lines are:
+		dmap.c - 1429, 1457
+		convert.c - 487, 494, 501, 509, 516, 523, 530, 537, 545, 552, 560, 568, 575, 582, 589, 596
+ 
 Swig will not run when it is there

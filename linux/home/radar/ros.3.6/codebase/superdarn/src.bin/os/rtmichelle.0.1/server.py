@@ -14,10 +14,10 @@ def process_data():
 	
 	#forever loop
 	while(1):
-		io = StringIO()
+		pIO = StringIO()
 		
 		#calls rtserver method that returns processed Prm data
-		prm = rtserver.getRadarParm();
+		prm = rtserver.getRadarParm()
 		
 		#proceeds to seperate the loaded in data then load it into a dictionary
 		p_data = {'revision':{'major':prm.revision.major,'minor':prm.revision.minor}}
@@ -34,7 +34,7 @@ def process_data():
 		p_data['lagfr'] = prm.lagfr
 		p_data['smsep'] = prm.smsep
 		p_data['ercod'] = prm.ercod
-		p_data['stat'] = {'agc':prm.stat.agc,'lopwr':prm.stat.agc}
+		p_data['stat'] = {'agc':prm.stat.agc,'lopwr':prm.stat.lopwr}
 		p_data['noise']= {'search':prm.noise.search,'mean':prm.noise.mean}
 		p_data['channel'] = prm.channel
 		p_data['bmnum'] = prm.bmnum
@@ -83,14 +83,17 @@ def process_data():
 		ltag.append(ltag0)
 		ltag.append(ltag1)
 		p_data['ltag'] = ltag
-		p_data['comf'] = prm.combf
+		p_data['combf'] = prm.combf
 		
 		#Load the prm dictionary into a json then load it into the
 		#stringIO functionality
 		pdata = json.dumps(p_data)
-		json.dump([pdata],io)
+		json.dump([pdata],pIO)
+		outpipe=rtserver.get_outpipe()
+		msg.ConnexWriteIP(outpipe,pIO.getvalue(),pIO.tell())
 	
 		#Load in Fit data from rtserver's getFitData method
+		fIO = StringIO()
 		fit = rtserver.getFitData();
 		f_data = {'revision':{'major': fit.revision.major,'minor': fit.revision.minor}}
 		noise = rtserver.return_noise()
@@ -210,11 +213,10 @@ def process_data():
 			f_data['rng'] = {'pwr0':p_0}
 	
 		fdata = json.dumps(f_data)
-		json.dump([fdata],io)
-		
+		json.dump([fdata],fIO)
 		#writes data to the rtserver outpipe location
 		outpipe= rtserver.get_outpipe()
-		msg.ConnexWriteIP(outpipe,io.getvalue(),sys.getsizeof(pdata)+sys.getsizeof(fdata))
+		msg.ConnexWriteIP(outpipe,fIO.getvalue(),fIO.tell())
 		sock = rtserver.initialize(sock,c)
 	
 if __name__ == '__main__':
