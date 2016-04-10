@@ -1,6 +1,14 @@
 SuperDARN_MSI_ROS
 =================
 
+MOVED THE FORT HAYS REPO TO VTSuperdarn.
+
+
+
+
+
+
+
 Operational SuperDARN Radar Operating System hardware control for MSI-like radar control systems
 
 
